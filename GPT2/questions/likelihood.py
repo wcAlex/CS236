@@ -25,7 +25,7 @@ def log_likelihood(model, text):
         for i in range (len(text2)-1):
             logits, past = model(x, past=past)
             log_softmax = F.log_softmax(logits, dim=3)
-            likelihood += log_softmax[-1, -1, -1, text2[i,0]].item()
+            likelihood += log_softmax[-1, -1, -1, text2[i+1,0]].item()
             x = text2[None, i+1, None]
 
         return likelihood
