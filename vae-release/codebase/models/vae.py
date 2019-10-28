@@ -4,6 +4,7 @@ from codebase import utils as ut
 from codebase.models import nns
 from torch import nn
 from torch.nn import functional as F
+import numpy as np
 
 class VAE(nn.Module):
     def __init__(self, nn='v1', name='vae', z_dim=2):
@@ -43,6 +44,22 @@ class VAE(nn.Module):
         # Outputs should all be scalar
         ################################################################################
 
+        # 1. get latent distribution and one sample.
+        m, v = self.enc.encode(x)
+        z = ut.sample_gaussian(m, v)
+
+        x_hat = self.dec.decode(z)
+
+        # 2. get KL divergent of q(z|x) and p(z). (assume z belongs to standard guassian distribution)
+        pz_m, pz_v = self.z_prior[0], self.z_prior[1]
+        kl_loss = ut.kl_normal(m, v, pz_m, pz_v)
+
+        # 3. reconstruct loss, encourage x = x_hat
+        r_loss = ut.log_bernoulli_with_logits(x, x_hat)
+        nelbo = -1 * (r_loss - kl_loss)
+        nelbo, kl, r = nelbo.mean(), kl_loss.mean(), -1 * r_loss.mean()
+        return nelbo, kl, r
+
         ################################################################################
         # End of code modification
         ################################################################################
@@ -69,6 +86,7 @@ class VAE(nn.Module):
         #
         # Outputs should all be scalar
         ################################################################################
+
 
         ################################################################################
         # End of code modification

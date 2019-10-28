@@ -48,6 +48,16 @@ class GMVAE(nn.Module):
         ################################################################################
         # Compute the mixture of Gaussian prior
         prior = ut.gaussian_parameters(self.z_pre, dim=1)
+
+        m, v = self.enc.encode(x)
+        z = ut.sample_gaussian(m, v)
+        logits = self.dec.decode(z)
+        kl = ut.log_normal(z, m, v) - ut.log_normal_mixture(z, *prior)
+        rec = -ut.log_bernoulli_with_logits(x, logits)
+        nelbo = kl + rec
+        nelbo, kl, rec = nelbo.mean(), kl.mean(), rec.mean()
+        return nelbo, kl, rec
+
         ################################################################################
         # End of code modification
         ################################################################################

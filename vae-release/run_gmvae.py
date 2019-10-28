@@ -46,3 +46,9 @@ if args.train:
 else:
     ut.load_model_by_name(gmvae, global_step=args.iter_max, device=device)
     ut.evaluate_lower_bound(gmvae, labeled_subset, run_iwae=True)
+
+# draw digits
+# ut.load_model_by_name(gmvae, global_step=args.iter_max, device=device)
+# sample_digits = gmvae.sample_x(200)
+#
+# ut.plot_figures(sample_digits, 10, 20, 28, 28, 'q2_digits.png')

@@ -10,6 +10,8 @@ from codebase.models.ssvae import SSVAE
 from codebase.models.vae import VAE
 from torch.nn import functional as F
 from torchvision import datasets, transforms
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 bce = torch.nn.BCEWithLogitsLoss(reduction='none')
 
@@ -40,6 +42,9 @@ def sample_gaussian(m, v):
     # Sample z
     ################################################################################
 
+    epsilon = torch.randn_like(v)
+    z = m + torch.sqrt(v) * epsilon
+
     ################################################################################
     # End of code modification
     ################################################################################
@@ -66,12 +71,14 @@ def log_normal(x, m, v):
     # Compute element-wise log probability of normal and remember to sum over
     # the last dimension
     ################################################################################
+    element_wise = -0.5 * (torch.log(v) + (x - m).pow(2) / v + np.log(2 * np.pi))
+    log_prob = element_wise.sum(-1)
 
+    #    element_wise = 0.5 * (torch.log(pv) - torch.log(qv) + qv / pv + (qm - pm).pow(2) / pv - 1)
     ################################################################################
     # End of code modification
     ################################################################################
     return log_prob
-
 
 def log_normal_mixture(z, m, v):
     """
@@ -90,6 +97,11 @@ def log_normal_mixture(z, m, v):
     # Compute the uniformly-weighted mixture of Gaussians density for each sample
     # in the batch
     ################################################################################
+    # (batch , dim) -> (batch , 1, dim)
+    z = z.unsqueeze(1)
+    # (batch, 1, dim) -> (batch, mix, dim) -> (batch, mix)
+    log_prob = log_normal(z, m, v)  # (batch , mix) -> (batch ,)
+    log_prob = log_mean_exp(log_prob, dim=1)
 
     ################################################################################
     # End of code modification
@@ -443,3 +455,24 @@ class FixedSeed:
 if sys.version_info[0] < 3:
     raise Exception("Detected unpermitted Python version: Python{}. You should use Python3."
                     .format(sys.version_info[0]))
+
+
+def plot_figures(figures, nrows=1, ncols=1, fig_w=28, fig_h=28, file_name='q1_digits.png'):
+  """Plot a dictionary of figures.
+
+  Parameters
+  ----------
+  figures : <title, figure> dictionary
+  ncols : number of columns of subplots wanted in the display
+  nrows : number of rows of subplots wanted in the figure
+  """
+  plt.figure(figsize=(fig_w, fig_h))
+  gs1 = gridspec.GridSpec(nrows, ncols, wspace=0.00, hspace=0.01)
+
+  for i, title in enumerate(figures):
+    ax1 = plt.subplot(gs1[i])
+    ax1.imshow(title.data.numpy().reshape(28,28), cmap=plt.gray())
+    ax1.set_axis_off()
+
+  plt.savefig(file_name)
+  plt.show()

@@ -44,3 +44,10 @@ if args.train:
 else:
     ut.load_model_by_name(vae, global_step=args.iter_max, device=device)
     ut.evaluate_lower_bound(vae, labeled_subset, run_iwae=True)
+
+# draw digits
+# ut.load_model_by_name(vae, global_step=args.iter_max, device=device)
+# sample_digits = vae.sample_x(200)
+#
+# ut.plot_figures(sample_digits, 10, 20, 28, 28)
+
