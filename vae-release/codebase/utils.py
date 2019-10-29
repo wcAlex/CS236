@@ -102,7 +102,7 @@ def log_normal_mixture(z, m, v):
     # Compute the uniformly-weighted mixture of Gaussians density for each sample
     # in the batch
     ################################################################################
-    # extend z for mix dimension 
+    # extend z for mix dimension
     z = z.unsqueeze(1)
     # compute prob for each gaussian mixed.
     log_prob_mix = log_normal(z, m, v)
