@@ -86,7 +86,28 @@ class VAE(nn.Module):
         #
         # Outputs should all be scalar
         ################################################################################
+        m, v = self.enc.encode(x)
 
+        # expand m to iw samples
+        m_iw = ut.duplicate(m, iw)
+        v_iw = ut.duplicate(v, iw)
+        x_iw = ut.duplicate(x, iw)
+
+        # sample z [iw]
+        z = ut.sample_gaussian(m_iw, v_iw)
+        x_logits = self.dec.decode(z)
+
+        # reconstruct loss
+        rec_loss = -ut.log_bernoulli_with_logits(x_iw, x_logits)
+
+        # kl
+        kl = ut.log_normal(z, m, v) - ut.log_normal(z, self.z_prior[0], self.z_prior[1])
+
+        # iw nelbo
+        nelbo = kl + rec_loss
+
+        niwae = -ut.log_mean_exp(-nelbo.reshape(iw, -1), dim=0)
+        niwae, kl, rec = niwae.mean(), kl.mean(), rec_loss.mean()
 
         ################################################################################
         # End of code modification

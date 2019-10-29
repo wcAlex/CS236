@@ -73,11 +73,11 @@ def log_normal(x, m, v):
     # Compute element-wise log probability of normal and remember to sum over
     # the last dimension
     ################################################################################
-    # element_wise = -0.5 * (torch.log(v) + (x - m).pow(2) / v + np.log(2 * np.pi))
-    # log_prob = element_wise.sum(-1)
+    element_wise = -0.5 * (torch.log(v) + (x - m).pow(2) / v + np.log(2 * np.pi))
+    log_prob = element_wise.sum(-1)
 
-    dist = Normal(loc=m, scale=torch.sqrt(v))
-    log_prob = dist.log_prob(value=x).sum(dim=-1)
+    # dist = Normal(loc=m, scale=torch.sqrt(v))
+    # log_prob = dist.log_prob(value=x).sum(dim=-1)
 
     #    element_wise = 0.5 * (torch.log(pv) - torch.log(qv) + qv / pv + (qm - pm).pow(2) / pv - 1)
     ################################################################################
@@ -102,16 +102,12 @@ def log_normal_mixture(z, m, v):
     # Compute the uniformly-weighted mixture of Gaussians density for each sample
     # in the batch
     ################################################################################
-    # # (batch , dim) -> (batch , 1, dim)
-    # z = z.unsqueeze(1)
-    # # (batch, 1, dim) -> (batch, mix, dim) -> (batch, mix)
-    # log_prob = log_normal(z, m, v)  # (batch , mix) -> (batch ,)
-    # log_prob = log_mean_exp(log_prob, dim=1)
-
-    dist = Normal(loc=m, scale=torch.sqrt(v))
-    z_broadcast = z.unsqueeze(dim=-1).transpose(1, 2)
-    log_prob_per_batch_per_mix = dist.log_prob(value=z_broadcast).sum(dim=-1)
-    log_prob = log_mean_exp(log_prob_per_batch_per_mix, dim=-1)
+    # extend z for mix dimension 
+    z = z.unsqueeze(1)
+    # compute prob for each gaussian mixed.
+    log_prob_mix = log_normal(z, m, v)
+    # (batch , mix) -> (batch ,)
+    log_prob = log_mean_exp(log_prob_mix, dim=-1)
 
     ################################################################################
     # End of code modification
