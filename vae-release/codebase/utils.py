@@ -73,13 +73,12 @@ def log_normal(x, m, v):
     # Compute element-wise log probability of normal and remember to sum over
     # the last dimension
     ################################################################################
-    element_wise = -0.5 * (torch.log(v) + (x - m).pow(2) / v + np.log(2 * np.pi))
-    log_prob = element_wise.sum(-1)
+    # element_wise = -0.5 * (torch.log(v) + (x - m).pow(2) / v + np.log(2 * np.pi))
+    # log_prob = element_wise.sum(-1)
 
-    # dist = Normal(loc=m, scale=torch.sqrt(v))
-    # log_prob = dist.log_prob(value=x).sum(dim=-1)
+    dist = Normal(loc=m, scale=torch.sqrt(v))
+    log_prob = dist.log_prob(value=x).sum(dim=-1)
 
-    #    element_wise = 0.5 * (torch.log(pv) - torch.log(qv) + qv / pv + (qm - pm).pow(2) / pv - 1)
     ################################################################################
     # End of code modification
     ################################################################################
