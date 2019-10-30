@@ -60,6 +60,26 @@ class SSVAE(nn.Module):
         y = np.repeat(np.arange(self.y_dim), x.size(0))
         y = x.new(np.eye(self.y_dim)[y])
         x = ut.duplicate(x, self.y_dim)
+        m, v = self.enc.encode(x, y)
+        z = ut.sample_gaussian(m, v)
+        x_logits = self.dec.decode(z, y)
+        kl_y = ut.kl_cat(y_prob, y_logprob, np.log(1.0 / self.y_dim))
+        kl_z = ut.kl_normal(m, v, self.z_prior[0], self.z_prior[1])
+        rec = -ut.log_bernoulli_with_logits(x, x_logits)
+        # (y_dim * batch) # (y_dim * batch)
+        # Compute the expected reconstruction and kl (under the distribution q(y | x))
+        rec = (y_prob.t() * rec.reshape(self.y_dim, -1)).sum(0)
+        kl_z = (y_prob.t() * kl_z.reshape(self.y_dim, -1)).sum(0)
+
+        # Reduce to means
+        kl_y, kl_z, rec = kl_y.mean(), kl_z.mean(), rec.mean()
+        nelbo = rec + kl_z + kl_y
+
+        # Duplicate y based on x's batch size. Then duplicate x
+        # This enumerates all possible combination of x with labels (0, 1, ..., 9)
+        # y = np.repeat(np.arange(self.y_dim), x.size(0))
+        # y = x.new(np.eye(self.y_dim)[y])
+        # x = ut.duplicate(x, self.y_dim)
         ################################################################################
         # End of code modification
         ################################################################################
