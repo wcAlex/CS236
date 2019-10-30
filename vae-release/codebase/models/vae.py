@@ -1,5 +1,7 @@
 # Copyright (c) 2018 Rui Shu
 import torch
+from torch.distributions import Normal
+
 from codebase import utils as ut
 from codebase.models import nns
 from torch import nn
@@ -86,33 +88,55 @@ class VAE(nn.Module):
         #
         # Outputs should all be scalar
         ################################################################################
+        # m, v = self.enc.encode(x)
+        #
+        # # expand m to iw samples
+        # m_iw = ut.duplicate(m, iw)
+        # v_iw = ut.duplicate(v, iw)
+        # x_iw = ut.duplicate(x, iw)
+        #
+        # # sample z [iw]
+        # z = ut.sample_gaussian(m_iw, v_iw)
+        # x_logits = self.dec.decode(z)
+        #
+        # # reconstruct loss
+        # rec_loss = -ut.log_bernoulli_with_logits(x_iw, x_logits)
+        #
+        # # kl
+        # kl = ut.log_normal(z, m, v) - ut.log_normal(z, self.z_prior[0], self.z_prior[1])
+        #
+        # # iw nelbo
+        # nelbo = kl + rec_loss
+        #
+        # niwae = -ut.log_mean_exp(-nelbo.reshape(iw, -1), dim=0)
+        # niwae, kl, rec = niwae.mean(), kl.mean(), rec_loss.mean()
+
         m, v = self.enc.encode(x)
 
-        # expand m to iw samples
-        m_iw = ut.duplicate(m, iw)
-        v_iw = ut.duplicate(v, iw)
-        x_iw = ut.duplicate(x, iw)
+        dist = Normal(loc=m, scale=torch.sqrt(v))
+        z_iw = dist.rsample(sample_shape=torch.Size([iw]))
 
-        # sample z [iw]
-        z = ut.sample_gaussian(m_iw, v_iw)
-        x_logits = self.dec.decode(z)
+        log_z_batch, kl_z_batch = [], []
 
-        # reconstruct loss
-        rec_loss = -ut.log_bernoulli_with_logits(x_iw, x_logits)
+        # for each z sample
+        for i in range(iw):
+            recon_logits = self.dec.decode(z_iw[i])
+            log_z_batch.append(ut.log_bernoulli_with_logits(x, recon_logits))  # [batch, z_sample]
+            kl_z_batch.append(ut.kl_normal(m, v, torch.zeros_like(m), torch.ones_like(v)))
 
-        # kl
-        kl = ut.log_normal(z, m, v) - ut.log_normal(z, self.z_prior[0], self.z_prior[1])
+        # aggregate result together
+        log_z = torch.stack(log_z_batch, dim=1)
+        kl_z = torch.stack(kl_z_batch, dim=1)
 
-        # iw nelbo
-        nelbo = kl + rec_loss
+        niwae = -ut.log_mean_exp(log_z - kl_z, dim=1).mean(dim=0)
 
-        niwae = -ut.log_mean_exp(-nelbo.reshape(iw, -1), dim=0)
-        niwae, kl, rec = niwae.mean(), kl.mean(), rec_loss.mean()
+        rec_loss = -torch.mean(log_z, dim=0)  # over batch
+        kl = torch.mean(kl_z, dim=0)
 
         ################################################################################
         # End of code modification
         ################################################################################
-        return niwae, kl, rec
+        return niwae, kl, rec_loss
 
     def loss(self, x):
         nelbo, kl, rec = self.negative_elbo_bound(x)
