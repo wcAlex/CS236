@@ -76,8 +76,8 @@ def log_normal(x, m, v):
     # element_wise = -0.5 * (torch.log(v) + (x - m).pow(2) / v + np.log(2 * np.pi))
     # log_prob = element_wise.sum(-1)
 
-    dist = Normal(loc=m, scale=torch.sqrt(v))
-    log_prob = dist.log_prob(value=x).sum(dim=-1)
+    element_wise = -0.5 * ( torch . log (v) + (x - m). pow (2) / v + np.log (2 * np.pi))
+    log_prob = element_wise . sum (-1)
 
     ################################################################################
     # End of code modification
