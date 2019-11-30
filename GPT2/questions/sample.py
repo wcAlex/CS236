@@ -30,10 +30,10 @@ def sample(model, start_text, config):
             ## 1) sample using the given `logits` tensor;
             ## 2) append the sample to the list `output`;
             ## 3) update `current_text` so that sampling can continue.
-            dist = Categorical(logits=logits)
-            x = dist.sample(torch.Size([1]))
-            output.append(x)
-            current_text = x
+            probs = F.softmax(logits, dim=-1)
+            
+            current_text = torch.multinomial(probs, num_samples=1)
+            output.append(current_text)
 
         output = torch.cat(output, dim=1)
         return output

@@ -18,14 +18,11 @@ def log_likelihood(model, text):
         ##  2) Return the log-likelihood of the `text` string. It should be a Python scalar.
         ##      NOTE: for simplicity, you can ignore the likelihood of the first token in `text`
 
-        likelihood = 0.0
-        past = None
-        text2 = text.transpose(0, 1)
-        x = text2[None, 0, None]
-        for i in range (len(text2)-1):
-            logits, past = model(x, past=past)
-            log_softmax = F.log_softmax(logits, dim=3)
-            likelihood += log_softmax[-1, -1, -1, text2[i+1,0]].item()
-            x = text2[None, i+1, None]
-
+        # we use cross entropy loss to measure distance of two probability group.
+        # since this is nearly a classfication problem, we are actualy
+        # compare the predict probability [0.2, 0.3, 0.0, 0.5] with class category [0, 0, 1, 0, 0 ...].
+        # just remember, here are all probabilities.
+        logits = model(text, past=None)
+        loss = nn.CrossEntropyLoss(reduction='sum')
+        likelihood = -loss(logits[0][:-1], text[0][1:]).item()
         return likelihood

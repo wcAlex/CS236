@@ -13,6 +13,6 @@ def classification(model, text):
     with torch.no_grad():
         ## TODO: Return True if `text` is a random string. Or else return False.
         ll = log_likelihood(model, text)
-        if ll < - 401:
+        if ll < - 300:
             return True
         return False
