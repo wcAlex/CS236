@@ -21,7 +21,14 @@ def loss_nonsaturating(g, d, x_real, *, device):
     # You may find some or all of the below useful:
     #   - F.binary_cross_entropy_with_logits
     #   - F.logsigmoid
-    raise NotImplementedError
+    
+    x_fake = g(z)
+    discriminator_fake = d(x_fake)
+    discriminator_real = d(x_real)
+    
+    d_loss = -F.logsigmoid(discriminator_real).mean() - F.logsigmoid(-discriminator_fake).mean()
+    g_loss = -F.logsigmoid(discriminator_fake).mean()
+
     # YOUR CODE ENDS HERE
 
     return d_loss, g_loss
@@ -45,7 +52,12 @@ def conditional_loss_nonsaturating(g, d, x_real, y_real, *, device):
     y_fake = y_real  # use the real labels as the fake labels as well
 
     # YOUR CODE STARTS HERE
-    raise NotImplementedError
+    x_fake = g(z, y_fake)
+    discriminator_real = d(x_real, y_real)
+    discriminator_fake = d(x_fake, y_fake)
+
+    d_loss = -F.logsigmoid(discriminator_real).mean() - F.logsigmoid(-discriminator_fake).mean()
+    g_loss = -F.logsigmoid(discriminator_fake).mean()
     # YOUR CODE ENDS HERE
 
     return d_loss, g_loss
@@ -70,7 +82,23 @@ def loss_wasserstein_gp(g, d, x_real, *, device):
     # You may find some or all of the below useful:
     #   - torch.rand
     #   - torch.autograd.grad(..., create_graph=True)
-    raise NotImplementedError
+    
+    x_fake = g(z)
+    discriminator_real = d(x_real)
+    discriminator_fake = d(x_fake)
+
+    # sample alpha and calculate norm for g and d.
+    alpha = torch.rand(x_real.shape[0], 1, 1, 1, device=device)
+    x_norm = (1 - alpha) * x_real + alpha * x_fake
+    d_norm = (x_norm)
+
+    # update loss
+    grad = torch.autograd.grad(d_norm.sum(), x_norm, create_graph=True)
+    grad_norm = grad[0].reshape(batch_size, -1).norm(dim=-1)
+
+    d_loss = (discriminator_fake - discriminator_real).mean() + 10*((grad_norm - 1)**2).mean()
+    g_loss = -discriminator_fake.mean()
+
     # YOUR CODE ENDS HERE
 
     return d_loss, g_loss
