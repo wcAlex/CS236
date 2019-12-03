@@ -88,7 +88,14 @@ class MADE(nn.Module):
 		x = torch.zeros_like(z)
 	
 		# YOUR CODE STARTS HERE
-		raise NotImplementedError
+		for i in range(self.input_size):
+			out = self.net(x)	
+			mu = out[:, :self.input_size]
+			alpha = out[:, self.input_size:]
+
+			x[:, i] = mu[:, i] + z[:, i] * torch.exp(alpha[:, i])
+
+		log_det = None
 		# YOUR CODE ENDS HERE
 
 		return x, log_det
@@ -100,7 +107,12 @@ class MADE(nn.Module):
 		:return: (z, log_det). log_det should be 1-D (batch_dim,)
 		"""
 		# YOUR CODE STARTS HERE
-		raise NotImplementedError
+		out = self.net(x)	
+		mu = out[:, :self.input_size]
+		alpha = out[:, self.input_size:]
+
+		z = (x - mu) / torch.exp(alpha)
+		log_det = - torch.sum(alpha, dim = 1)
 		# YOUR CODE ENDS HERE
 
 		return z, log_det
@@ -134,10 +146,24 @@ class MAF(nn.Module):
 		:return: log_prob. This should be a Python scalar.
 		"""
 		# YOUR CODE STARTS HERE
-		raise NotImplementedError
+		
+		sum_log_det = torch.zeros([x.size(0)], device=x.device)
+		for flow in self.nf:
+			x, log_det = flow.inverse(x)
+			if len(log_det.size()) == 2:
+				log_det = log_det.sum(dim=1)
+
+			sum_log_det += log_det
+		
+		sum_log_prob = torch.zeros([x.size(0)], device=x.device)
+		for i in range(self.input_size):
+			sum_log_prob += self.base_dist.log_prob(x[:,i])
+
+		log_prob = sum_log_prob + sum_log_det
+		log_prob_mean = log_prob.mean()
 		# YOUR CODE ENDS HERE
 
-		return log_prob
+		return log_prob_mean
 
 	def loss(self, x):
 		"""
